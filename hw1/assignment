@@ -1,0 +1,7 @@
+• implement hash tables with insert and find
+ − with linked-list buckets [1pt]
+ − with linear probing and rehashing [1pt]
+• compare with std::set and std::unordered_set [1pt]
+• bonus: beat std::unordered_set by >10 % [.5pt]
+• stick to crude measurement methods: time(1)/clock(3)
+• use a number of elements suitable for this measurement style
