@@ -1,4 +1,7 @@
-hw1:
-	cd hw1 && make run
+all: hw1
 
-.PHONY: hw1
+hw1: hw1.src/hw1.cc hw1.src/hash_set_linked_list.hh hw1.src/hash_set_linear_probing.hh
+	c++ -std=c++14 -O2 -o $@ $<
+	@echo Run using ./hw1
+clean:
+	rm hw1
