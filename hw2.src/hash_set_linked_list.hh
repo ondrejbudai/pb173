@@ -8,7 +8,7 @@
 #include <algorithm>
 
 /// Hash set implemented using linked list (although internally std::vector is used)
-template<typename T> class hash_set_linked_list {
+template<typename T, typename = void> class hash_set_linked_list {
 public:
 
     /// Inserts item into set
@@ -31,6 +31,13 @@ public:
     /// Searches for item in set
     bool find(const T& item) const {
         return m_impl.find(item);
+    }
+    
+    void erase(const T& item) {
+        bool actually_erased = m_impl.erase(item);
+        if (actually_erased){
+            m_num_elements--;
+        }
     }
 
 private:
@@ -74,20 +81,32 @@ private:
             }
             return new_impl;
         }
+        
+        bool erase(const T& item){
+            auto& bucket = get_bucket(item);
+            auto item_iterator = std::find(std::begin(bucket), std::end(bucket), item);
+            if (item_iterator == std::end(bucket)){
+                return false;
+            }
+            
+            bucket.erase(item_iterator);
+
+            return true;
+        }
 
     private:
         std::vector<std::vector<T>> m_buckets;
         size_t m_bucket_count;
-        static std::hash<T> hash_function;
+        std::hash<T> m_hash_function;
 
         std::vector<T>& get_bucket(const T& item) {
-            auto hashed_n = hash_function(item);
+            auto hashed_n = m_hash_function(item);
             auto bucket = hashed_n % m_bucket_count;
             return m_buckets[bucket];
         }
 
         const std::vector<T>& get_bucket(const T& item) const {
-            auto hashed_n = hash_function(item);
+            auto hashed_n = m_hash_function(item);
             auto bucket = hashed_n % m_bucket_count;
             return m_buckets[bucket];
         }

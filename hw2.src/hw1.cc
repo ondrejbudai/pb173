@@ -11,6 +11,31 @@
 #include <random>
 #include <iomanip>
 
+class int_container {
+public:
+    explicit int_container(int value_) : value{value_}{ptr = new int; std::cout << "allocated" << std::endl;}
+    ~int_container(){
+        delete ptr; std::cout << "freed" << std::endl;
+    }
+    int_container(const int_container& other){
+        ptr = new int(*other.ptr);
+        value = other.value;
+        std::cout << "copied" << std::endl;
+    }
+    bool operator==(const int_container& other){ return value == other.value;}
+    int value;
+    int* ptr;
+};
+
+namespace std {
+    template<> struct hash<int_container>{
+        std::size_t operator()(const int_container& k) const {
+            return static_cast<std::size_t>(k.value);
+        }
+    };
+}
+
+
 constexpr int INT_ITERATIONS = 5000000;
 constexpr int STRING_ITERATIONS = 500000;
 constexpr int STRING_LENGTH = 64;
@@ -187,6 +212,11 @@ void benchmark() {
 }
 
 int main() {
+
+//    hash_set_linear_probing<int_container> malformed_container;
+//    malformed_container.insert(int_container(1));
+//    generic_test_string<hash_set_linear_probing<std::string>>();
+//    return 0;
     // Set precision of floats to zero, e.g. 1024.42 => 1024
     std::cout << std::fixed << std::setprecision(0) << std::endl;
     // Run tests and then benchmark those structures

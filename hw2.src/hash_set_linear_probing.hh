@@ -5,9 +5,12 @@
 
 #include <functional>
 #include <vector>
+#include <cassert>
+#include <memory>
+#include <iostream>
 
 /// Hash set implemented using linear probing
-template<typename T> class hash_set_linear_probing {
+template<typename T, typename Allocator = std::allocator<T>> class hash_set_linear_probing {
 public:
 
     /// Insert item into set
@@ -20,14 +23,17 @@ public:
         // If number elements grows sufficiently, grow the bucket count
         // Please note without resizing the implementation will break!
         if(m_num_elements > MAX_LOAD * m_impl.size()){
-            impl new_impl{m_impl.create_bigger_self()};
-            m_impl = std::move(new_impl);
+            m_impl = m_impl.create_bigger_self();
         }
     }
 
     /// Searches for item in set
     bool find(const T& item) const{
         return m_impl.find(item);
+    }
+    
+    void erase(const T& item){
+        m_impl.erase(item);
     }
 
 private:
@@ -37,16 +43,69 @@ private:
     size_t m_num_elements = 0;
     static constexpr float MAX_LOAD = 0.7f;
 
+    enum class field_state {
+        FREE, ASSIGNED, DELETED
+    };
+
+    class state_vector {
+    public:
+        explicit state_vector(size_t num_fields){
+            m_num_fields = num_fields;
+            m_data.assign(num_fields * 2, false);
+        }
+
+        void set_state(size_t field_num, field_state new_state){
+            assert(field_num < m_num_fields);
+            auto new_state_int = static_cast<int>(new_state);
+            m_data[field_num * 2] = (new_state_int & 1) == 1;
+            m_data[field_num * 2 + 1] = (new_state_int & 2) == 2;
+        }
+
+        field_state get_state(size_t field_num) const {
+            assert(field_num < m_num_fields);
+            auto lower_bit = static_cast<int>(m_data[field_num * 2]);
+            auto higher_bit = static_cast<int>(m_data[field_num * 2 + 1]);
+            auto field_state_int = lower_bit | higher_bit << 1;
+
+            return static_cast<field_state>(field_state_int);
+        }
+
+    private:
+        std::vector<bool> m_data;
+        size_t m_num_fields;
+    };
+
     /// Helping class allowing us to nicely implement hash set growth
     class impl {
     public:
-        explicit impl(size_t initial_size){
-            hash_table_size = initial_size;
-            occupied_table.assign(hash_table_size, false);
-            hash_table.assign(hash_table_size, {});
+        explicit impl(size_t initial_size) : m_hash_table_size{initial_size}, m_field_states{initial_size} {
+            // use unique_ptr? sounds ridiculous
+            // TODO: THIS IS WRONG!
+            m_hash_table = {allocator.allocate(initial_size), [this](T* p){allocator.deallocate(p, m_hash_table_size);}};
+//            m_hash_table = new T[initial_size];
+            
+//            m_hash_table.assign(initial_size, {});
         }
+        
+        impl(impl&) = delete;
+        impl& operator=(impl&) = delete;
+        impl(impl&&) noexcept = default;
+        impl& operator=(impl&&) noexcept = default;
+        
+        ~impl(){
+            if(!m_hash_table){
+                return;
+            }
+            for(size_t i = 0; i < m_hash_table_size; ++i){
+                if(m_field_states.get_state(i) != field_state::ASSIGNED){
+                    continue;
+                }
+                m_hash_table.get()[i].~T();
+            }
+        }
+        
         bool insert(const T& item){
-            const auto index = get_index(item);
+            const auto index = get_first_possible_index(item);
             // C++17 only :(
             // auto [n_result, free_index] = find_next_free_index(item, index);
             auto result = find_next_free_index(item, index);
@@ -60,45 +119,45 @@ private:
         }
 
         bool find(const T& item) const {
-            auto index = get_index(item);
-            while(true){
-                if(!occupied_table[index]){
-                    return false;
-                }
-                if(hash_table[index] == item){
-                    return true;
-                }
-                ++index;
-                if(index >= hash_table_size){
-                    index = 0;
-                }
+            return find_item_index(item).found;
+        }
+        
+        void erase(const T& item){
+            auto [found, index] = find_item_index(item);
+            if (!found){
+                return;
             }
+            
+            m_field_states.set_state(index, field_state::DELETED);
         }
 
         /// Creates impl with same items but bigger table
         impl create_bigger_self(){
-            impl new_impl{2 * hash_table_size};
+            impl new_impl{2 * m_hash_table_size};
 
-            for(size_t i = 0; i < hash_table_size; ++i){
-                if(!occupied_table[i]){
+            for(size_t i = 0; i < m_hash_table_size; ++i){
+                if(m_field_states.get_state(i) != field_state::ASSIGNED){
                     continue;
                 }
-                new_impl.insert(hash_table[i]);
+                new_impl.insert(m_hash_table.get()[i]);
             }
 
             return new_impl;
         }
 
-        size_t size(){return hash_table_size;}
+        size_t size(){return m_hash_table_size;}
     private:
-        size_t hash_table_size;
-        std::vector<bool> occupied_table;
-        std::vector<T> hash_table;
-        std::hash<T> hash_function;
+        Allocator allocator;
+        size_t m_hash_table_size;
+        state_vector m_field_states;
+//        T* m_hash_table = nullptr;
+        std::unique_ptr<T, std::function<void (T*)>> m_hash_table;
+//        std::vector<T> m_hash_table;
+        std::hash<T> m_hash_function;
 
-        size_t get_index(const T& item) const {
-            auto hashed_n = hash_function(item);
-            return hashed_n % hash_table_size;
+        size_t get_first_possible_index(const T& item) const {
+            auto hashed_n = m_hash_function(item);
+            return hashed_n % m_hash_table_size;
         }
 
         /// Search for next free index for inserting a new item
@@ -106,22 +165,44 @@ private:
         /// Return false, index of the next free index
         std::pair<bool, size_t> find_next_free_index(const T& item, size_t index) {
             while(true){
-                if(!occupied_table[index]){
+                if(m_field_states.get_state(index) != field_state::ASSIGNED){
                     return std::make_pair(false, index);
                 }
-                if(hash_table[index] == item){
+                if(m_hash_table.get()[index] == item){
                     return std::make_pair(true, 0);
                 }
                 ++index;
-                if(index >= hash_table_size){
+                if(index >= m_hash_table_size){
                     index = 0;
                 }
             }
         }
 
         void insert_to_index(const T& item, size_t index){
-            occupied_table[index] = true;
-            hash_table[index] = item;
+            m_field_states.set_state(index, field_state::ASSIGNED);
+            auto field_ptr = &m_hash_table.get()[index];
+            new (field_ptr) T(item);
+        }
+        
+        struct item_search_result {
+            bool found;
+            size_t index;
+        };
+        
+        item_search_result find_item_index(const T& item) const {
+            auto index = get_first_possible_index(item);
+            while(true){
+                if(m_field_states.get_state(index) == field_state::FREE){
+                    return {false, 0};
+                }
+                if(m_hash_table.get()[index] == item){
+                    return {true, index};
+                }
+                ++index;
+                if(index >= m_hash_table_size){
+                    index = 0;
+                }
+            }
         }
     };
 };
