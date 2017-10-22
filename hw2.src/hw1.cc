@@ -145,6 +145,21 @@ template<template<typename ...> typename Set> void generic_test_string() {
 
     for(const auto& str: vector){
         assert(set.find(str));
+        set.erase(str);
+        assert(!set.find(str));
+    }
+
+    for(const auto& str: vector){
+        assert(!set.find(str));
+    }
+
+    for(const auto& str: vector){
+        set.insert(str);
+        assert(set.find(str));
+    }
+
+    for(const auto& str: vector){
+        assert(set.find(str));
     }
 }
 
