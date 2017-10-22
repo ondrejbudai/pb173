@@ -128,6 +128,7 @@ private:
             }
 
             m_field_states.set_state(index, field_state::DELETED);
+            m_hash_table.get()[index].~T();
         }
 
         /// Creates impl with same items but bigger table
@@ -189,10 +190,11 @@ private:
         item_index_search_result find_item_index(const T& item) const {
             auto index = get_first_possible_index(item);
             while(true){
-                if(m_field_states.get_state(index) == field_state::FREE){
+                const auto field_state = m_field_states.get_state(index);
+                if(field_state == field_state::FREE){
                     return {false, 0};
                 }
-                if(m_hash_table.get()[index] == item){
+                if(field_state == field_state::ASSIGNED && m_hash_table.get()[index] == item){
                     return {true, index};
                 }
                 ++index;
