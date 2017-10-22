@@ -67,7 +67,7 @@ template<template<typename ...> typename Set> void generic_test_int() {
     assert(set.find(0));
     assert(!set.find(1));
 
-    Set<int, std::allocator<int>> set2;
+    Set<int> set2;
     for(int i = 0; i < 2048; ++i){
         set2.insert(i);
         assert(set2.find(i));
@@ -76,6 +76,51 @@ template<template<typename ...> typename Set> void generic_test_int() {
         assert(set2.find(i));
     }
     assert(!set2.find(2048));
+
+    Set<int> set_erase;
+    assert(!set_erase.find(2));
+
+    set_erase.erase(2);
+    assert(!set_erase.find(2));
+
+    set_erase.insert(2);
+    assert(set_erase.find(2));
+
+    set_erase.erase(2);
+    assert(!set_erase.find(2));
+
+    set_erase.erase(2);
+    assert(!set_erase.find(2));
+
+    set_erase.insert(2);
+    assert(set_erase.find(2));
+
+    std::vector<int> numbers;
+    Set<int> set3;
+    for(int i = 0; i < 8096; ++i){
+        numbers.emplace_back(i);
+        set3.insert(i);
+        assert(set3.find(i));
+    }
+
+    std::shuffle(std::begin(numbers), std::end(numbers), std::mt19937{});
+
+    for(const auto& n: numbers){
+        assert(set3.find(n));
+        set3.erase(n);
+        assert(!set3.find(n));
+    }
+    for(const auto& n: numbers){
+        assert(!set3.find(n));
+    }
+    for(int i = 0; i < 8096; ++i){
+        assert(!set3.find(i));
+        set3.insert(i);
+        assert(set3.find(i));
+    }
+    for(const auto& n: numbers){
+        assert(set3.find(n));
+    }
 }
 
 
@@ -89,7 +134,7 @@ template<template<typename ...> typename Set> void generic_test_string() {
     assert(set.find(""));
     assert(!set.find("kocka"));
 
-    Set<std::string, std::allocator<std::string>> set2;
+    Set<std::string> set2;
     std::vector<std::string> vector;
 
     for(auto i = 0; i < 2048; ++i){
