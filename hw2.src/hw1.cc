@@ -13,14 +13,13 @@
 
 class int_container {
 public:
-    explicit int_container(int value_) : value{value_}{ptr = new int; std::cout << "allocated" << std::endl;}
+    explicit int_container(int value_) : value{value_}{ptr = new int;}
     ~int_container(){
-        delete ptr; std::cout << "freed" << std::endl;
+        delete ptr;
     }
     int_container(const int_container& other){
         ptr = new int(*other.ptr);
         value = other.value;
-        std::cout << "copied" << std::endl;
     }
     bool operator==(const int_container& other){ return value == other.value;}
     int value;
@@ -58,8 +57,8 @@ std::string generate_random_string(size_t length){
     return random_string;
 }
 
-template<typename Set> void generic_test_int() {
-    Set set;
+template<template<typename ...> typename Set> void generic_test_int() {
+    Set<int> set;
 
     set.insert(5);
     assert(set.find(5));
@@ -68,7 +67,7 @@ template<typename Set> void generic_test_int() {
     assert(set.find(0));
     assert(!set.find(1));
 
-    Set set2;
+    Set<int, std::allocator<int>> set2;
     for(int i = 0; i < 2048; ++i){
         set2.insert(i);
         assert(set2.find(i));
@@ -80,8 +79,8 @@ template<typename Set> void generic_test_int() {
 }
 
 
-template<typename Set> void generic_test_string() {
-    Set set;
+template<template<typename ...> typename Set> void generic_test_string() {
+    Set<std::string> set;
 
     set.insert("test");
     assert(set.find("test"));
@@ -90,11 +89,11 @@ template<typename Set> void generic_test_string() {
     assert(set.find(""));
     assert(!set.find("kocka"));
 
-    Set set2;
+    Set<std::string, std::allocator<std::string>> set2;
     std::vector<std::string> vector;
 
     for(auto i = 0; i < 2048; ++i){
-        auto str = generate_random_string(10);
+        auto str = generate_random_string(64);
         set.insert(str);
         assert(set.find(str));
     }
@@ -106,16 +105,16 @@ template<typename Set> void generic_test_string() {
 
 void test() {
     std::cout << "Testing hash table using linked lists." << std::endl;
-    generic_test_int<hash_set_linked_list<int>>();
-    generic_test_string<hash_set_linked_list<std::string>>();
+    generic_test_int<hash_set_linked_list>();
+    generic_test_string<hash_set_linked_list>();
     std::cout << "Testing hash table using linear probing." << std::endl;
-    generic_test_int<hash_set_linear_probing<int>>();
-    generic_test_string<hash_set_linear_probing<std::string>>();
+    generic_test_int<hash_set_linear_probing>();
+    generic_test_string<hash_set_linear_probing>();
 
     std::cout << "Tests successfully ran." << std::endl << std::endl;
 }
 
-template<typename Set> void generic_benchmark_insert(Set& set){
+template<typename IntSet> void generic_benchmark_insert(IntSet& set){
     auto start = clock();
     for(auto i = 0; i < INT_ITERATIONS; ++i) {
         set.insert(rand());
@@ -125,7 +124,7 @@ template<typename Set> void generic_benchmark_insert(Set& set){
     std::cout << "Inserting random numbers: " << (1000.0 * time / CLOCKS_PER_SEC) << "ms" << std::endl;
 }
 
-template<typename Set> void generic_benchmark_find(Set& set){
+template<typename IntSet> void generic_benchmark_find(IntSet& set){
     auto start = clock();
     for(auto i = 0; i < INT_ITERATIONS; ++i) {
         set.find(rand());
@@ -136,14 +135,14 @@ template<typename Set> void generic_benchmark_find(Set& set){
 }
 
 
-template<typename Set> void generic_benchmark_int(){
-    Set set_random;
+template<template<typename ...> typename Set> void generic_benchmark_int(){
+    Set<int> set_random;
     generic_benchmark_insert(set_random);
     generic_benchmark_find(set_random);
 
 }
 
-template<typename Set> void generic_benchmark_string_insert(Set& set, std::vector<std::string>& vector){
+template<typename StringSet> void generic_benchmark_string_insert(StringSet& set, std::vector<std::string>& vector){
     auto start = clock();
     for(int i = 0; i < STRING_ITERATIONS; ++i){
         auto str = generate_random_string(STRING_LENGTH);
@@ -155,7 +154,7 @@ template<typename Set> void generic_benchmark_string_insert(Set& set, std::vecto
     std::cout << "Inserting random strings: " << (1000.0 * time / CLOCKS_PER_SEC) << "ms" << std::endl;
 }
 
-template<typename Set> void generic_benchmark_string_find_included(Set& set, std::vector<std::string>& vector){
+template<typename StringSet> void generic_benchmark_string_find_included(StringSet& set, std::vector<std::string>& vector){
     auto start = clock();
     for(const auto& str: vector){
         set.find(str);
@@ -165,7 +164,7 @@ template<typename Set> void generic_benchmark_string_find_included(Set& set, std
     std::cout << "Searching for random strings contained in set: " << (1000.0 * time / CLOCKS_PER_SEC) << "ms" << std::endl;
 }
 
-template<typename Set> void generic_benchmark_string_find_not_included(Set& set){
+template<typename StringSet> void generic_benchmark_string_find_not_included(StringSet& set){
     auto start = clock();
     for(int i = 0; i < STRING_ITERATIONS; ++i){
         auto str = generate_random_string(STRING_LENGTH);
@@ -176,8 +175,8 @@ template<typename Set> void generic_benchmark_string_find_not_included(Set& set)
     std::cout << "Searching for random strings not contained in set: " << (1000.0 * time / CLOCKS_PER_SEC) << "ms" << std::endl;
 }
 
-template<typename Set> void generic_benchmark_string(){
-    Set set;
+template<template<typename ...> typename Set> void generic_benchmark_string(){
+    Set<std::string> set;
     std::vector<std::string> generated_strings;
     generic_benchmark_string_insert(set, generated_strings);
     generic_benchmark_string_find_included(set, generated_strings);
@@ -188,35 +187,30 @@ template<typename Set> void generic_benchmark_string(){
 void benchmark() {
     std::cout << "Benchmarking hash table with linked list:" << std::endl;
     std::cout << "=========================================" << std::endl;
-    generic_benchmark_int<hash_set_linked_list<int>>();
-    generic_benchmark_string<hash_set_linked_list<std::string>>();
+    generic_benchmark_int<hash_set_linked_list>();
+    generic_benchmark_string<hash_set_linked_list>();
     std::cout << std::endl;
 
     std::cout << "Benchmarking hash table with linear probing:" << std::endl;
     std::cout << "============================================" << std::endl;
-    generic_benchmark_int<hash_set_linear_probing<int>>();
-    generic_benchmark_string<hash_set_linear_probing<std::string>>();
+    generic_benchmark_int<hash_set_linear_probing>();
+    generic_benchmark_string<hash_set_linear_probing>();
     std::cout << std::endl;
 
     std::cout << "Benchmarking std::unordered_set:" << std::endl;
     std::cout << "================================" << std::endl;
-    generic_benchmark_int<std::unordered_set<int>>();
-    generic_benchmark_string<std::unordered_set<std::string>>();
+    generic_benchmark_int<std::unordered_set>();
+    generic_benchmark_string<std::unordered_set>();
     std::cout << std::endl;
 
     std::cout << "Benchmarking std::set:" << std::endl;
     std::cout << "======================" << std::endl;
-    generic_benchmark_int<std::set<int>>();
-    generic_benchmark_string<std::set<std::string>>();
+    generic_benchmark_int<std::set>();
+    generic_benchmark_string<std::set>();
     std::cout << std::endl;
 }
 
 int main() {
-
-//    hash_set_linear_probing<int_container> malformed_container;
-//    malformed_container.insert(int_container(1));
-//    generic_test_string<hash_set_linear_probing<std::string>>();
-//    return 0;
     // Set precision of floats to zero, e.g. 1024.42 => 1024
     std::cout << std::fixed << std::setprecision(0) << std::endl;
     // Run tests and then benchmark those structures

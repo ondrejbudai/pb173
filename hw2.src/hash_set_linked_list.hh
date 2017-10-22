@@ -32,7 +32,7 @@ public:
     bool find(const T& item) const {
         return m_impl.find(item);
     }
-    
+
     void erase(const T& item) {
         bool actually_erased = m_impl.erase(item);
         if (actually_erased){
@@ -81,14 +81,14 @@ private:
             }
             return new_impl;
         }
-        
+
         bool erase(const T& item){
             auto& bucket = get_bucket(item);
             auto item_iterator = std::find(std::begin(bucket), std::end(bucket), item);
             if (item_iterator == std::end(bucket)){
                 return false;
             }
-            
+
             bucket.erase(item_iterator);
 
             return true;
