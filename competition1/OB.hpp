@@ -8,13 +8,13 @@ struct OB
     internal_set set{};
 
     void insert( char c ) {
-        set[c] = true;
+        set.set(c);
     }
     void erase( char c ) {
-        set[c] = false;
+        set.reset(c);
     }
     int count( char c ) {
-        return set[c];
+        return set.test(c);
     }
 
     OB operator&( const OB &o ) {
