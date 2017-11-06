@@ -2,10 +2,11 @@
 
 struct OB
 {
+    using internal_set = std::bitset<256>;
     OB() = default;
-    OB(const std::bitset<256>& set_) : set{set_}{}
-    std::bitset<256> set{};
-    
+    OB(const internal_set& set_) : set{set_}{}
+    internal_set set{};
+
     void insert( char c ) {
         set[c] = true;
     }
