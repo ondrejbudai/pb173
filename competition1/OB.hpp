@@ -14,7 +14,7 @@ struct OB
         set.reset(c);
     }
     int count( char c ) {
-        return set.test(c);
+        return const_cast<const internal_set>(set)[c];
     }
 
     OB operator&( const OB &o ) {
