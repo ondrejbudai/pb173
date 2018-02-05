@@ -1,4 +1,4 @@
-all: hw1
+all: hw1 hw4 brainfuck
 
 hw1: hw1.src/hw1.cc hw1.src/hash_set_linked_list.hh hw1.src/hash_set_linear_probing.hh
 	c++ -std=c++14 -O2 -o $@ $<
@@ -14,3 +14,8 @@ hw4: hw4.src/hw4.cc hw4.src/int16_set_bitvector.hh hw4.src/int16_set_trie.hh
 	c++ -std=c++1z -O2 -Ihw4.src/bricks -o $@ $<
 hw5:
 	@echo Sorry, hw5 isn\'t ready yet. I will write you an e-mail when I finish it.
+
+brainfuck: brainfuck.src/brainfuck.cc
+	c++ -std=c++1z -o $@ $<
+	@echo "Run as:"
+	@echo "./brainfuck brainfuck.src/hanoi.bf | gcc -x assembler -nostdlib -o hanoi -"
